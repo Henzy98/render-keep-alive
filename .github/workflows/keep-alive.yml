@@ -10,20 +10,31 @@ jobs:
     runs-on: ubuntu-latest
     
     steps:
-    - name: Ping Render Site
+    - name: Ping Main Site
       run: |
-        echo "Pinging site to keep it active..."
+        echo "Pinging main site..."
         response=$(curl -s -o /dev/null -w "%{http_code}" https://lc-unah.onrender.com)
-        echo "Response code: $response"
+        echo "Main site response: $response"
         
-        if [ $response -eq 200 ]; then
-          echo "✅ Site is active and responding"
-        else
-          echo "⚠️ Site returned status code: $response"
-        fi
-        
-    - name: Health Check
+    - name: Test License Endpoint
       run: |
-        echo "Performing health check..."
-        curl -f https://lc-unah.onrender.com/health || exit 0
-        echo "Health check completed"
+        echo "Testing license verification endpoint..."
+        response=$(curl -s -o /dev/null -w "%{http_code}" -X POST \
+          -H "Content-Type: application/json" \
+          -H "User-Agent: HenzyGuard/2.0" \
+          -H "X-Henzy-Guard-Core: HENZY_GUARD_2025" \
+          -d '{"license_key":"TEST_PING_KEY"}' \
+          https://lc-unah.onrender.com/verify)
+        echo "Verify endpoint response: $response"
+        
+    - name: Multiple Endpoint Ping
+      run: |
+        echo "Pinging multiple endpoints to ensure full activation..."
+        endpoints=("/" "/health" "/status" "/api" "/verify")
+        
+        for endpoint in "${endpoints[@]}"; do
+          echo "Pinging: $endpoint"
+          curl -s -o /dev/null -w "Status: %{http_code}\n" \
+            "https://lc-unah.onrender.com$endpoint" || echo "Failed: $endpoint"
+          sleep 2
+        done
